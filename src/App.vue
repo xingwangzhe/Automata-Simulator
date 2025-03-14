@@ -6,14 +6,14 @@ import AutomataVisualizer from './components/automata/AutomataVisualizer.vue';
 
 <template>
   <header>
-    <div class="hero is-primary">
-      <div class="hero-body">
+    <div class="hero is-primary is-small">
+      <div class="hero-body py-2">
         <div class="container">
-          <p class="title">
+          <p class="title is-4">
             <i class="fas fa-project-diagram mr-2"></i>
             正则表达式自动机可视化
           </p>
-          <p class="subtitle">
+          <p class="subtitle is-6">
             实时转换正则表达式至DFA/NFA自动机并进行模拟
           </p>
         </div>
@@ -32,13 +32,13 @@ import AutomataVisualizer from './components/automata/AutomataVisualizer.vue';
     </div>
   </header>
 
-  <main class="section">
-    <div class="container mt-5">
+  <main class="section pt-3 pb-4">
+    <div class="container">
       <div class="columns">
         <div class="column is-4">
           <!-- 左侧控制区域 -->
           <InputRegex />
-          <InputString class="mt-4" />
+          <InputString class="mt-3" />
         </div>
 
         <div class="column is-8">
@@ -98,11 +98,30 @@ export default {
 </script>
 
 <style scoped>
+.mt-3 {
+  margin-top: 1rem;
+}
+
 .mt-4 {
   margin-top: 1.5rem;
 }
 
 .mr-2 {
   margin-right: 0.5rem;
+}
+
+/* 减小头部占用的空间 */
+.hero.is-small .hero-body {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+/* 调整section的内边距 */
+.section.pt-3 {
+  padding-top: 1rem;
+}
+
+.section.pb-4 {
+  padding-bottom: 1.5rem;
 }
 </style>

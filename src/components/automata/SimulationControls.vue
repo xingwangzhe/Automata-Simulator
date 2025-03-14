@@ -1,16 +1,16 @@
 <template>
   <div class="simulation-controls">
-    <div class="notification is-light"
+    <div class="notification is-light py-2 px-3 mb-2"
       :class="{ 'is-success': isAccepted, 'is-danger': !isAccepted && steps.length > 1 }">
-      <p>当前状态: <strong>{{ currentState?.state || '无状态' }}</strong>
+      <p class="mb-1">当前状态: <strong>{{ currentState?.state || '无状态' }}</strong>
         (位置: {{ currentState?.position >= 0 ? currentState?.position + 1 : '开始' }},
         字符: {{ currentState?.character || '无' }})</p>
-      <p v-if="currentStep === steps.length - 1">
+      <p v-if="currentStep === steps.length - 1" class="mb-0">
         <strong>结果: {{ isAccepted ? '接受' : '拒绝' }}</strong>
       </p>
     </div>
 
-    <div class="buttons is-centered">
+    <div class="buttons is-centered are-small">
       <button class="button is-info" @click="onReset">
         <span class="icon"><i class="fas fa-undo"></i></span>
         <span>重置</span>
@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 
 const props = defineProps({
   currentState: {
@@ -165,17 +165,41 @@ function updatePlaybackInterval() {
 
 <style scoped>
 .simulation-controls {
-  margin-top: 1rem;
-  padding: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.5rem;
   border-top: 1px solid #eee;
 }
 
 .buttons.is-centered {
   justify-content: center;
+  margin-bottom: 0.25rem;
 }
 
 .field.is-centered {
   display: flex;
   justify-content: center;
+}
+
+.mb-0 {
+  margin-bottom: 0 !important;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem !important;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem !important;
+}
+
+/* 减小通知的内边距 */
+.notification.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.notification.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 </style>

@@ -65,44 +65,77 @@ function formatAutomataData() {
   // 准备边数据
   const edgesMap = new Map();
 
+  // 处理自环（自指向的转换）- 跟踪每个节点的自环数量
+  const selfLoops = new Map();
+
+  // 首先处理自环，因为它们需要特殊处理
   props.automata.transitions.forEach(transition => {
-    const key = `${transition.from}-${transition.to}`;
-    const symbol = transition.symbol;
+    if (transition.from === transition.to) {
+      const stateId = transition.from;
+      const loopCount = selfLoops.get(stateId) || 0;
+      selfLoops.set(stateId, loopCount + 1);
 
-    if (edgesMap.has(key)) {
-      const existingEdge = edgesMap.get(key);
-      if (!existingEdge.symbol.includes(symbol)) {
-        existingEdge.symbol += `, ${symbol}`;
-      }
-    } else {
-      // 计算曲率 - 自环需要较大曲率
-      const isSelfLoop = transition.from === transition.to;
-      const curveness = isSelfLoop ? 0.7 : 0.2;
-
+      const key = `${transition.from}-${transition.to}-${loopCount}`;
       edgesMap.set(key, {
         source: transition.from,
         target: transition.to,
-        symbol: symbol,
-        // 边的样式
+        symbol: transition.symbol,
+        isSelfLoop: true,
+        loopIndex: loopCount,
+        // 自环样式
         lineStyle: {
-          curveness: curveness,
-          type: symbol === 'ε' ? 'dashed' : 'solid'
+          width: 2,
+          type: transition.symbol === 'ε' ? 'dashed' : 'solid',
+          opacity: 0.8,
+          // 增加自环的曲率并根据索引调整
+          curveness: 0.6 + (loopCount * 0.1)
         }
       });
     }
   });
 
-  // 为每个边设置唯一的曲率，避免重叠
-  const fromToCount = new Map();
-  edgesMap.forEach((edge, key) => {
-    const [from, to] = key.split('-');
-    const fromToKey = `${from}-${to}`;
-    const count = fromToCount.get(fromToKey) || 0;
-    fromToCount.set(fromToKey, count + 1);
+  // 然后处理常规转换
+  props.automata.transitions.forEach(transition => {
+    if (transition.from !== transition.to) {
+      const key = `${transition.from}-${transition.to}`;
+      const symbol = transition.symbol;
 
-    if (from !== to && count > 0) {
-      // 为多条边分配不同曲率
-      edge.lineStyle.curveness = 0.2 + (count * 0.1);
+      if (edgesMap.has(key)) {
+        const existingEdge = edgesMap.get(key);
+        if (!existingEdge.symbol.includes(symbol)) {
+          existingEdge.symbol += `, ${symbol}`;
+        }
+      } else {
+        edgesMap.set(key, {
+          source: transition.from,
+          target: transition.to,
+          symbol: symbol,
+          isSelfLoop: false,
+          // 常规边样式
+          lineStyle: {
+            width: 2,
+            type: symbol === 'ε' ? 'dashed' : 'solid',
+            opacity: 0.8,
+            curveness: 0.2
+          }
+        });
+      }
+    }
+  });
+
+  // 为多重边设置不同的曲率，避免重叠
+  const multiEdges = new Map();
+
+  edgesMap.forEach((edge) => {
+    if (!edge.isSelfLoop) {
+      const baseKey = `${edge.source}-${edge.target}`;
+      const count = multiEdges.get(baseKey) || 0;
+      multiEdges.set(baseKey, count + 1);
+
+      if (count > 0) {
+        // 增加曲率使多重边可见
+        edge.lineStyle.curveness = 0.2 + (count * 0.15);
+      }
     }
   });
 
@@ -110,16 +143,21 @@ function formatAutomataData() {
   const edges = Array.from(edgesMap.values()).map(edge => ({
     source: edge.source,
     target: edge.target,
-    symbol: edge.symbol,
-    lineStyle: edge.lineStyle,
+    // 设置箭头样式 - 只在边的终点显示箭头
+    symbol: ['none', 'arrow'], // 起点没有箭头，终点有箭头
+    symbolSize: [0, 10], // 调整箭头大小
     label: {
       show: true,
       formatter: edge.symbol,
       fontSize: 14,
       backgroundColor: '#fff',
       padding: [2, 4],
-      borderRadius: 4
-    }
+      borderRadius: 4,
+      // 自环的标签放置在更高位置
+      position: edge.isSelfLoop ? 'top' : 'middle',
+      distance: edge.isSelfLoop ? 5 : 0
+    },
+    lineStyle: edge.lineStyle
   }));
 
   return { nodes, edges };
@@ -158,6 +196,7 @@ function highlightCurrentStates() {
 // 监听数据变化
 watch([() => props.automata, () => props.currentStates, () => props.title], () => {
   renderChart();
+  highlightCurrentStates();
 }, { deep: true });
 
 // 处理窗口调整
