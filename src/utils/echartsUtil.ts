@@ -28,6 +28,44 @@ echarts.use([
 
 // 创建自动机图表默认配置的函数
 export function createAutomataGraphOption(nodes: any, edges: any, title = '自动机') {
+  // 处理特殊类型的边 - 特别是自环
+  const processedEdges = edges.map((edge: any) => {
+    // 检测是否为自环（source和target相同）
+    const isSelfLoop = edge.source === edge.target
+
+    if (isSelfLoop) {
+      return {
+        ...edge,
+        // 确保自环明显可见
+        lineStyle: {
+          ...edge.lineStyle,
+          curveness: 1.5, // 极大的曲率确保自环明显
+          smooth: true, // 确保曲线平滑
+          width: 2.5, // 稍粗一些的线
+          color: '#ff7300', // 使用醒目的颜色
+          opacity: 0.9,
+        },
+        // 确保标签位置正确且可见
+        label: {
+          ...edge.label,
+          show: true,
+          position: 'top', // 在顶部显示标签
+          distance: 10, // 增加标签距离
+          formatter: edge.value || edge.label?.formatter,
+          fontSize: 14,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: [4, 7],
+          borderRadius: 4,
+        },
+        // 显示明确的箭头标记
+        symbol: ['circle', 'arrow'],
+        symbolSize: [5, 12], // 增大箭头大小
+      }
+    }
+
+    return edge
+  })
+
   return {
     title: {
       text: title,
@@ -46,7 +84,7 @@ export function createAutomataGraphOption(nodes: any, edges: any, title = '自�
             `${params.data.isAccepting ? '✓ 接受状态' : ''}`
           )
         } else if (params.dataType === 'edge') {
-          return `转换: ${params.data.label.formatter}`
+          return `转换: ${params.value || params.data.value || params.data.label?.formatter}`
         }
         return ''
       },
@@ -75,33 +113,34 @@ export function createAutomataGraphOption(nodes: any, edges: any, title = '自�
         },
       },
     },
-    animationDurationUpdate: 1000,
+    animationDurationUpdate: 300, // 减少动画时间，使自环显示更快
     animationEasingUpdate: 'quinticInOut',
     series: [
       {
         type: 'graph',
         layout: 'force',
         data: nodes,
-        edges: edges,
+        edges: processedEdges, // 使用处理过的边数据
         force: {
-          repulsion: 1000, // 增加排斥力
-          edgeLength: [100, 200], // 边长范围
-          gravity: 0.1,
+          repulsion: 1200, // 增大排斥力
+          edgeLength: [120, 250], // 边长范围更大
+          gravity: 0.05, // 减小重力
           layoutAnimation: true,
-          friction: 0.6, // 添加摩擦力减缓运动
+          friction: 0.7, // 增加摩擦力
         },
         // 启用拖拽
         draggable: true,
         // 启用缩放和平移
         roam: true,
         // 焦点样式
-        focus: 'adjacency',
+        focusNodeAdjacency: true,
         // 边的样式
         lineStyle: {
           color: '#999',
           width: 2,
           opacity: 0.7,
-          curveness: 0,
+          curveness: 0.3,
+          smooth: true, // 启用平滑曲线，对自环很重要
         },
         // 配置边上箭头样式
         edgeSymbol: ['none', 'arrow'],
@@ -109,11 +148,12 @@ export function createAutomataGraphOption(nodes: any, edges: any, title = '自�
         // 边标签
         edgeLabel: {
           show: true,
+          position: 'middle',
           formatter: '{c}',
-          fontSize: 12,
+          fontSize: 14,
           backgroundColor: '#fff',
+          padding: [3, 5],
           borderRadius: 4,
-          padding: [2, 4],
         },
         // 鼠标悬停时的高亮样式
         emphasis: {
@@ -123,16 +163,21 @@ export function createAutomataGraphOption(nodes: any, edges: any, title = '自�
             opacity: 1,
           },
           edgeLabel: {
-            fontSize: 14,
+            fontSize: 16,
           },
           itemStyle: {
             shadowBlur: 10,
             shadowColor: 'rgba(0, 0, 0, 0.5)',
           },
         },
-        // 处理多条边的曲度
-        autoCurveness: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
-        // 使用分层布局初始化节点位置
+        // 增加节点间距
+        nodeScaleRatio: 0.6,
+        // 适当放大所有节点
+        scaling: 1.2,
+        // 使用圆形布局初始化节点位置
+        circular: {
+          rotateLabel: false,
+        },
         initialLayout: 'circular',
       },
     ],

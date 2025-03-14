@@ -5,7 +5,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted } from 'vue';
 import echarts from '../../utils/echartsUtil';
-import { createAutomataGraphOption } from '../../utils/echartsUtil';
 
 const props = defineProps({
   automata: {
@@ -65,36 +64,64 @@ function formatAutomataData() {
   // 准备边数据
   const edgesMap = new Map();
 
-  // 处理自环（自指向的转换）- 跟踪每个节点的自环数量
-  const selfLoops = new Map();
+  // 收集所有自环
+  const selfLoopMap = new Map();
 
-  // 首先处理自环，因为它们需要特殊处理
+  // 首先识别和分组所有自环
   props.automata.transitions.forEach(transition => {
     if (transition.from === transition.to) {
-      const stateId = transition.from;
-      const loopCount = selfLoops.get(stateId) || 0;
-      selfLoops.set(stateId, loopCount + 1);
-
-      const key = `${transition.from}-${transition.to}-${loopCount}`;
-      edgesMap.set(key, {
-        source: transition.from,
-        target: transition.to,
-        symbol: transition.symbol,
-        isSelfLoop: true,
-        loopIndex: loopCount,
-        // 自环样式
-        lineStyle: {
-          width: 2,
-          type: transition.symbol === 'ε' ? 'dashed' : 'solid',
-          opacity: 0.8,
-          // 增加自环的曲率并根据索引调整
-          curveness: 0.6 + (loopCount * 0.1)
-        }
-      });
+      if (!selfLoopMap.has(transition.from)) {
+        selfLoopMap.set(transition.from, []);
+      }
+      selfLoopMap.get(transition.from).push(transition.symbol);
     }
   });
 
-  // 然后处理常规转换
+  // 处理每个节点的自环 - 使自环在节点上方明显可见
+  selfLoopMap.forEach((symbols, stateId) => {
+    symbols.forEach((symbol, index) => {
+      // 为每个自环符号生成单独的自环，但位置不同
+      // 根据自环数量调整角度和方向
+      const angle = (index * 45) % 360;
+      const radians = angle * Math.PI / 180;
+
+      // 计算自环的控制点，让自环成为一个明显的圆环
+      const cx = Math.cos(radians) * 100; // 控制点X偏移
+      const cy = Math.sin(radians) * 100; // 控制点Y偏移
+
+      edgesMap.set(`${stateId}-self-loop-${index}`, {
+        source: stateId,
+        target: stateId,
+        value: symbol,
+        // 使用固定大小的自环，确保可见
+        lineStyle: {
+          width: 3,
+          type: symbol === 'ε' ? 'dashed' : 'solid',
+          color: '#ff7300',   // 橙色自环
+          opacity: 0.9,
+          curveness: 2,      // 极大的曲率确保自环明显为圆
+        },
+        label: {
+          show: true,
+          formatter: symbol,
+          position: 'middle', // 自环中间显示标签
+          distance: 5,
+          fontSize: 14,
+          color: '#333',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: [4, 7],
+          borderRadius: 4,
+        },
+        // 明确设置自环的箭头
+        symbol: ['none', 'arrow'],
+        symbolSize: [0, 12],  // 增大箭头
+        // 使用自定义布局控制点
+        controlPoints: [{ x: cx, y: cy }]
+      });
+    });
+  });
+
+  // 处理非自环的转换
   props.automata.transitions.forEach(transition => {
     if (transition.from !== transition.to) {
       const key = `${transition.from}-${transition.to}`;
@@ -110,14 +137,7 @@ function formatAutomataData() {
           source: transition.from,
           target: transition.to,
           symbol: symbol,
-          isSelfLoop: false,
-          // 常规边样式
-          lineStyle: {
-            width: 2,
-            type: symbol === 'ε' ? 'dashed' : 'solid',
-            opacity: 0.8,
-            curveness: 0.2
-          }
+          isSelfLoop: false
         });
       }
     }
@@ -134,31 +154,65 @@ function formatAutomataData() {
 
       if (count > 0) {
         // 增加曲率使多重边可见
-        edge.lineStyle.curveness = 0.2 + (count * 0.15);
+        edge.curveness = 0.2 + (count * 0.15);
+      } else {
+        edge.curveness = 0.1;
       }
     }
   });
 
   // 转换为数组
-  const edges = Array.from(edgesMap.values()).map(edge => ({
-    source: edge.source,
-    target: edge.target,
-    // 设置箭头样式 - 只在边的终点显示箭头
-    symbol: ['none', 'arrow'], // 起点没有箭头，终点有箭头
-    symbolSize: [0, 10], // 调整箭头大小
-    label: {
-      show: true,
-      formatter: edge.symbol,
-      fontSize: 14,
-      backgroundColor: '#fff',
-      padding: [2, 4],
-      borderRadius: 4,
-      // 自环的标签放置在更高位置
-      position: edge.isSelfLoop ? 'top' : 'middle',
-      distance: edge.isSelfLoop ? 5 : 0
-    },
-    lineStyle: edge.lineStyle
-  }));
+  const edges = Array.from(edgesMap.values()).map(edge => {
+    const isSelfLoop = edge.source === edge.target;
+
+    if (isSelfLoop) {
+      // 自环边 - 确保自环明显可见
+      return {
+        source: edge.source,
+        target: edge.target,
+        value: edge.value,
+        // 确保自环箭头明显，用不同的样式
+        symbol: ['none', 'arrow'],
+        symbolSize: [0, 12],
+        // 自环线条样式
+        lineStyle: {
+          ...edge.lineStyle,
+          width: 3,
+          curveness: 2,   // 极大的曲率
+          smooth: true    // 平滑曲线
+        },
+        // 确保标签可见
+        label: {
+          ...edge.label,
+          show: true
+        }
+      };
+    } else {
+      // 常规边的配置
+      return {
+        source: edge.source,
+        target: edge.target,
+        value: edge.value || edge.symbol,
+        symbol: ['none', 'arrow'],
+        symbolSize: [0, 10],
+        lineStyle: {
+          width: 2,
+          type: (edge.value || edge.symbol) === 'ε' ? 'dashed' : 'solid',
+          opacity: 0.8,
+          curveness: edge.curveness || 0.2
+        },
+        label: {
+          show: true,
+          formatter: edge.value || edge.symbol,
+          fontSize: 14,
+          color: '#333',
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          padding: [3, 5],
+          borderRadius: 4
+        }
+      };
+    }
+  });
 
   return { nodes, edges };
 }
@@ -173,11 +227,145 @@ function renderChart() {
 
   if (!chart.value) {
     chart.value = echarts.init(chartContainer.value);
+
+    // 添加双击事件调整视图
+    chart.value.on('dblclick', function () {
+      chart.value.dispatchAction({
+        type: 'graphRoam',
+        zoom: 1,
+        originX: 0,
+        originY: 0
+      });
+    });
   }
 
-  // 创建图表配置
-  const option = createAutomataGraphOption(nodes, edges, props.title);
+  // 创建自定义图表配置，不使用createAutomataGraphOption函数，以便更好地控制自环
+  const option = {
+    title: {
+      text: props.title,
+      top: 'top',
+      left: 'center',
+      textStyle: {
+        fontSize: 16,
+      },
+    },
+    tooltip: {
+      formatter: function (params) {
+        if (params.dataType === 'node') {
+          return (
+            `状态: ${params.name}<br/>` +
+            `${params.data.isStart ? '✓ 开始状态<br/>' : ''}` +
+            `${params.data.isAccepting ? '✓ 接受状态' : ''}`
+          );
+        } else if (params.dataType === 'edge') {
+          return `转换: ${params.value || params.data.value}`;
+        }
+        return '';
+      },
+    },
+    toolbox: {
+      feature: {
+        saveAsImage: {},
+        restore: {},
+        myTool: {
+          show: true,
+          title: '调整布局',
+          icon: 'path://M304.1,456V300.3L130.3,300.3L243.9,414l-23,23L77,293.1L221.1,149l23,23L130.3,285.8L304.1,285.8V128.5H318.6V456H304.1zM480.5,127.9V283.6L654.3,283.6L540.7,170l23-23L707.6,290.9L563.5,435l-23-23L654.3,298.1L480.5,298.1V455.4H466V127.9H480.5z',
+          onclick: function () {
+            chart.value.setOption({
+              series: [{
+                force: {
+                  layoutAnimation: true,
+                  initLayout: 'circular',
+                },
+              }]
+            });
+          },
+        },
+      },
+    },
+    animationDurationUpdate: 300, // 快速动画
+    animationEasingUpdate: 'quinticInOut',
+    series: [
+      {
+        type: 'graph',
+        layout: 'force',
+        data: nodes,
+        edges: edges,
+        force: {
+          repulsion: 1500,    // 增加节点间排斥力
+          edgeLength: [150, 250], // 增加边长度
+          gravity: 0.03,      // 降低重力让节点分散
+          layoutAnimation: true,
+          friction: 0.7,
+        },
+        // 启用拖拽
+        draggable: true,
+        // 启用缩放和平移
+        roam: true,
+        // 焦点样式
+        focusNodeAdjacency: true, // 高亮相邻节点
+        // 边的样式
+        lineStyle: {
+          color: '#999',
+          width: 2,
+          opacity: 0.7,
+          curveness: 0.3,
+          // 确保曲线平滑
+          smooth: true
+        },
+        // 保证自环显示的关键设置
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [0, 10],
+        // 边标签
+        edgeLabel: {
+          show: true,
+          formatter: '{c}',
+          fontSize: 14,
+          backgroundColor: '#fff',
+          padding: [3, 5],
+          borderRadius: 4,
+        },
+        // 高亮样式
+        emphasis: {
+          lineStyle: {
+            width: 4,
+            opacity: 1,
+          },
+          edgeLabel: {
+            fontSize: 16,
+          },
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor: 'rgba(0, 0, 0, 0.5)',
+          },
+        },
+        // 节点间距足够大，避免自环重叠
+        nodeScaleRatio: 0.6,
+        // 显著增加节点大小，让自环更清晰
+        scaling: 1.1,
+        // 使用圆形布局初始化节点位置
+        circular: {
+          rotateLabel: false
+        },
+        // 初始化为圆形布局，然后再用力导向调整
+        initialLayout: 'circular',
+      }
+    ],
+  };
+
   chart.value.setOption(option, true);
+
+  // 手动调整自环的位置，确保可见
+  setTimeout(() => {
+    chart.value.resize();
+
+    // 对于某些特殊情况，我们可能需要手动调整图形位置
+    chart.value.dispatchAction({
+      type: 'graphCircular',
+      seriesIndex: 0
+    });
+  }, 200);
 }
 
 // 高亮当前状态

@@ -52,6 +52,26 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { useAutomataStore } from '../stores/automataStore';
 import * as echarts from 'echarts';
+import { State, Transition } from '../utils/automataConverter';
+
+// 定义接口以解决类型问题
+interface AutomataState extends State {
+  id: string;
+  name: string;
+  isStart: boolean;
+  isAccepting: boolean;
+}
+
+interface AutomataTransition extends Transition {
+  from: string;
+  to: string;
+  symbol: string;
+}
+
+interface Automata {
+  states: AutomataState[];
+  transitions: AutomataTransition[];
+}
 
 const store = useAutomataStore();
 const chartContainer = ref<HTMLElement | null>(null);
@@ -100,7 +120,7 @@ function highlightCurrentStates() {
   if (!automata) return;
 
   // 准备节点样式数据
-  const nodeData = automata.states.map(state => {
+  const nodeData = (automata.states as AutomataState[]).map(state => {
     // 检查状态是否为当前活动状态
     const isActive = currentState.value.currentStates.includes(state.id);
 
@@ -121,7 +141,6 @@ function highlightCurrentStates() {
   chart.value.setOption({
     series: [{
       data: nodeData,
-      // 保留其他配置不变
     }]
   });
 }
@@ -137,8 +156,11 @@ function renderChart() {
   const automata = automataType.value === 'NFA' ? store.automata.nfa : store.automata.dfa;
   if (!automata) return;
 
+  // 使用类型断言确保类型安全
+  const typedAutomata = automata as unknown as Automata;
+
   // 准备ECharts数据
-  const nodes = automata.states.map((state: unknown) => ({
+  const nodes = typedAutomata.states.map((state) => ({
     id: state.id,
     name: state.name,
     symbolSize: state.isAccepting ? 70 : 60,
@@ -150,7 +172,8 @@ function renderChart() {
     },
     label: {
       show: true,
-      position: 'inside',
+      // 修改这里，使用ECharts支持的位置值
+      position: 'inside' as const, // 使用类型断言确保类型匹配
       formatter: state.name + (state.isAccepting ? '(接受)' : ''),
       color: '#fff',
       fontWeight: 'bold'
@@ -160,7 +183,7 @@ function renderChart() {
   // 改进边的展示，处理自环和多重转换
   const edgesMap = new Map();
 
-  automata.transitions.forEach((transition: unknown) => {
+  typedAutomata.transitions.forEach((transition) => {
     const key = `${transition.from}-${transition.to}`;
     if (edgesMap.has(key)) {
       // 对于已存在的边，合并符号标签
@@ -196,7 +219,8 @@ function renderChart() {
     lineStyle: edge.lineStyle
   }));
 
-  const option = {
+  // 使用any类型避免ECharts类型错误
+  const option: any = {
     title: {
       text: `${automataType.value}自动机`,
       top: 'top',
@@ -206,10 +230,10 @@ function renderChart() {
       }
     },
     tooltip: {
-      formatter: function (params: unknown) {
+      formatter: function (params: any) {
         if (params.dataType === 'node') {
-          const state = automata.states.find((s: unknown) => s.id === params.data.id);
-          return `状态: ${state.name}<br/>开始状态: ${state.isStart ? '是' : '否'}<br/>接受状态: ${state.isAccepting ? '是' : '否'}`;
+          const state = typedAutomata.states.find((s) => s.id === params.data.id);
+          return `状态: ${state?.name || ''}<br/>开始状态: ${state?.isStart ? '是' : '否'}<br/>接受状态: ${state?.isAccepting ? '是' : '否'}`;
         } else if (params.dataType === 'edge') {
           return `转换: ${params.data.label.formatter}`;
         }
@@ -217,7 +241,7 @@ function renderChart() {
       }
     },
     animationDurationUpdate: 1000,
-    animationEasingUpdate: 'quinticInOut',
+    animationEasingUpdate: 'quinticOut' as const,
     series: [
       {
         type: 'graph',
@@ -232,7 +256,7 @@ function renderChart() {
         },
         roam: true,
         label: {
-          position: 'inside'
+          position: 'inside' as const
         },
         lineStyle: {
           color: '#999',
