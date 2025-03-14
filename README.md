@@ -44,13 +44,13 @@ git clone https://github.com/xingwangzhe/Automata-Simulator.git
 cd Automata-Simulator
 
 # 安装依赖
-npm install
+pnpm install
 
 # 启动开发服务器
-npm run dev
+pnpm run dev
 
 # 构建生产版本
-npm run build
+pnpm run build
 ```
 
 ## 📖 使用指南
