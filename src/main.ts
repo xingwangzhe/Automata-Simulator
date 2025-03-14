@@ -1,5 +1,5 @@
-import './assets/main.css'
-
+// import './assets/main.css'
+import '../node_modules/bulma/css/bulma.min.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
