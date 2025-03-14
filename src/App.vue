@@ -38,7 +38,7 @@ import AutomataVisualizer from './components/automata/AutomataVisualizer.vue';
         <div class="column is-4">
           <!-- 左侧控制区域 -->
           <InputRegex />
-          <InputString class="mt-3" />
+          <InputString class="mt-3" style="height: auto;" />
         </div>
 
         <div class="column is-8">
