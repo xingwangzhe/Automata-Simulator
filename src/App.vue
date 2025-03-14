@@ -23,7 +23,7 @@ import AutomataVisualizer from './components/automata/AutomataVisualizer.vue';
           <div class="container">
             <ul>
               <li class="is-active"><a>自动机可视化</a></li>
-              <li><a href="https://github.com" target="_blank">项目源码</a></li>
+              <li><a href="https://github.com/xingwangzhe/Automata-Simulator.git" target="_blank">项目源码</a></li>
               <li><a href="#help" @click.prevent="showHelp = true">使用帮助</a></li>
             </ul>
           </div>

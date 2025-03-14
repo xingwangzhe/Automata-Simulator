@@ -31,7 +31,7 @@
 
       <!-- 无自动机时的提示 -->
       <div class="notification is-info is-light py-2 px-3" v-if="!hasAutomata">
-        <p>输入正则表达式并点击生成按钮查看自动机图</p>
+        <p>输入正则表达式并点击生成按钮查看自动机图,节点自身带有标签表示自环</p>
       </div>
     </div>
   </div>
@@ -106,12 +106,14 @@ function togglePlayback(isPlaying: boolean) {
 }
 
 .chart-wrapper {
-  flex-grow:1;
-  min-height: 500px; /* 增加最小高度 */
+  flex-grow: 1;
+  min-height: 500px;
+  /* 增加最小高度 */
   border: 1px solid #eee;
   border-radius: 4px;
   margin-bottom: 0.5rem;
-  overflow: hidden; /* 保证图表不会溢出 */
+  overflow: hidden;
+  /* 保证图表不会溢出 */
 }
 
 .controls-wrapper {

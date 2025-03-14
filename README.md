@@ -1,7 +1,9 @@
 # Automata Simulator（自动机模拟器）
 
+在线使用地址[https://automata.xingwangzhe.fun](https://automata.xingwangzhe.fun)
+
 <div align="center">
-  <img src="./public/logo.png" alt="自动机模拟器Logo" width="200" />
+  <img src="./public/icon-512.png" alt="自动机模拟器Logo" width="200" />
   <h3>可视化自动机学习与模拟工具</h3>
   <p>
     <em>由GitHub Copilot协助开发</em>

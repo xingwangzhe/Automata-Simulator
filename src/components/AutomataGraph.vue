@@ -43,7 +43,7 @@
     </div>
 
     <div class="notification is-info" v-if="!hasAutomata">
-      <p>输入正则表达式并点击生成按钮查看自动机图</p>
+      <p>输入正则表达式并点击生成按钮查看自动机图,节点自身带有标签表示自环</p>
     </div>
   </div>
 </template>
