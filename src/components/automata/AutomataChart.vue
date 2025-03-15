@@ -217,8 +217,8 @@ function formatAutomataData() {
   return { nodes, edges };
 }
 
-// 初始化/更新图表
-function renderChart() {
+// 初始化图表
+function initChart() {
   if (!chartContainer.value || !props.automata) return;
 
   const { nodes, edges } = formatAutomataData();
@@ -239,7 +239,7 @@ function renderChart() {
     });
   }
 
-  // 创建自定义图表配置，不使用createAutomataGraphOption函数，以便更好地控制自环
+  // 创建自定义图表配置
   const option = {
     title: {
       text: props.title,
@@ -368,24 +368,65 @@ function renderChart() {
   }, 200);
 }
 
-// 高亮当前状态
+// 只高亮当前状态，不重新生成图表
 function highlightCurrentStates() {
-  if (!chart.value || !props.automata) return;
+  if (!chart.value || !props.automata?.states) return;
 
-  const { nodes } = formatAutomataData();
+  // 获取当前图表数据
+  const option = chart.value.getOption();
+  if (!option.series || !option.series[0] || !option.series[0].data) return;
 
+  // 复制当前节点数据以进行样式更新
+  const currentNodes = [...option.series[0].data];
+
+  // 更新每个节点的高亮状态
+  currentNodes.forEach(node => {
+    const state = props.automata.states.find(s => s.id === node.id);
+    if (!state) return;
+
+    const isActive = props.currentStates.includes(node.id);
+
+    // 只更新样式相关属性，保留位置和大小
+    node.itemStyle = {
+      ...node.itemStyle,
+      borderWidth: isActive ? 5 : (state.isStart ? 4 : 1),
+      borderColor: isActive ? '#ff9900' : (state.isStart ? '#ff0000' : '#999'),
+      shadowBlur: isActive ? 20 : 0,
+      shadowColor: isActive ? '#ffcc00' : ''
+    };
+  });
+
+  // 只更新节点样式，不改变节点位置和大小
   chart.value.setOption({
     series: [{
-      data: nodes
+      data: currentNodes
     }]
-  });
+  }, false); // 使用false表示不合并，仅更新指定项
 }
 
 // 监听数据变化
-watch([() => props.automata, () => props.currentStates, () => props.title], () => {
-  renderChart();
+watch(() => props.automata, (newAutomata, oldAutomata) => {
+  // 只有自动机对象完全改变时才重新初始化图表
+  if (JSON.stringify(newAutomata) !== JSON.stringify(oldAutomata)) {
+    initChart();
+  }
+}, { deep: true });
+
+// 监听当前状态变化，只更新高亮
+watch(() => props.currentStates, () => {
   highlightCurrentStates();
 }, { deep: true });
+
+// 监听标题变化，仅更新标题
+watch(() => props.title, (newTitle) => {
+  if (chart.value) {
+    chart.value.setOption({
+      title: {
+        text: newTitle
+      }
+    });
+  }
+});
 
 // 处理窗口调整
 function handleResize() {
@@ -393,7 +434,7 @@ function handleResize() {
 }
 
 onMounted(() => {
-  renderChart();
+  initChart();
   window.addEventListener('resize', handleResize);
 });
 
