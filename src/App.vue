@@ -14,7 +14,7 @@ import AutomataVisualizer from './components/automata/AutomataVisualizer.vue';
             正则表达式自动机可视化
           </p>
           <p class="subtitle is-6">
-            实时转换正则表达式至DFA/NFA自动机并进行模拟
+            实时转换正则表达式至DFA/NFA自动机并进行模拟,感谢Copilot的极大帮助
           </p>
         </div>
       </div>

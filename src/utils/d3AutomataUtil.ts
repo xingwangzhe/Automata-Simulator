@@ -18,6 +18,7 @@ export interface Link {
   symbol: string
   isSelfLoop?: boolean
   loopIndex?: number
+  curveDirection?: number // 添加此属性，表示曲线的弯曲方向
 }
 
 export class D3AutomataRenderer {
@@ -142,6 +143,9 @@ export class D3AutomataRenderer {
       }
     })
 
+    // 处理双向连接 - 检测相同节点间的双向边，并添加方向标记
+    this.processBidirectionalLinks()
+
     // 确保连线的source和target是节点对象而非字符串
     console.log('处理后的连线数据:', this.links)
 
@@ -155,6 +159,64 @@ export class D3AutomataRenderer {
     this.simulation.nodes(this.nodes)
     this.simulation.force('link').links(this.links)
     this.simulation.alpha(1).restart()
+  }
+
+  // 处理双向链接，为它们添加方向标记，使曲线在不同方向弯曲
+  private processBidirectionalLinks() {
+    // 创建一个映射来跟踪节点对之间的连接
+    const connectionMap = new Map<string, Link[]>()
+
+    // 收集所有非自环连接
+    this.links.forEach((link) => {
+      if (!link.isSelfLoop) {
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target
+
+        // 创建唯一标识符，确保同一对节点的连接被分组
+        const key = [sourceId, targetId].sort().join('-')
+
+        if (!connectionMap.has(key)) {
+          connectionMap.set(key, [])
+        }
+        connectionMap.get(key)?.push(link)
+      }
+    })
+
+    // 处理双向连接
+    connectionMap.forEach((links, key) => {
+      if (links.length > 1) {
+        // 检查是否为双向连接（即两个节点之间既有A→B也有B→A）
+        const directions = new Set()
+        let isBidirectional = false
+
+        links.forEach((link) => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target
+          directions.add(`${sourceId}-${targetId}`)
+        })
+
+        // 检查是否有方向相反的两条边
+        if (links.length >= 2 && directions.size >= 2) {
+          isBidirectional = true
+        }
+
+        if (isBidirectional) {
+          // 标记双向连接，一边向上弯曲，一边向下弯曲
+          links.forEach((link, index) => {
+            // 向上或向下的曲率
+            const curveDirection = index % 2 === 0 ? 0.3 : -0.3
+            link.curveDirection = curveDirection
+          })
+        } else if (links.length > 1) {
+          // 即使不是双向的，多条连接也需要错开
+          links.forEach((link, index) => {
+            const baseCurve = 0.1
+            const increment = 0.1
+            link.curveDirection = baseCurve + index * increment
+          })
+        }
+      }
+    })
   }
 
   // 计算自环路径
@@ -210,6 +272,7 @@ export class D3AutomataRenderer {
     target: any,
     isSelfLoop: boolean,
     loopIndex: number = 0,
+    curveDirection?: number,
   ): string {
     // 调试输出
     console.log('计算路径:', source, target, isSelfLoop)
@@ -244,6 +307,24 @@ export class D3AutomataRenderer {
     const targetX = target.x - (this.nodeRadius + 5) * unitDx
     const targetY = target.y - (this.nodeRadius + 5) * unitDy
 
+    // 如果有指定的曲率方向（双向连接的情况），创建一条曲线
+    if (curveDirection !== undefined) {
+      // 计算控制点，使曲线在垂直于连线的方向弯曲
+      const perpX = -unitDy // 垂直于连线的单位向量
+      const perpY = unitDx
+
+      // 控制点的偏移距离，根据边的长度调整
+      const offset = Math.min(distance * 0.3, 50) * curveDirection
+
+      // 控制点位置
+      const controlX = (sourceX + targetX) / 2 + perpX * offset
+      const controlY = (sourceY + targetY) / 2 + perpY * offset
+
+      // 创建二次贝塞尔曲线
+      return `M ${sourceX},${sourceY} Q ${controlX},${controlY} ${targetX},${targetY}`
+    }
+
+    // 无曲率方向，创建直线
     return `M ${sourceX},${sourceY} L ${targetX},${targetY}`
   }
 
@@ -319,10 +400,14 @@ export class D3AutomataRenderer {
       .attr('opacity', 1)
       .attr('fill', 'none')
       .attr('marker-end', (d) => (d.isSelfLoop ? 'url(#arrow-loop)' : 'url(#arrow)'))
-      // 添加调试信息
+      // 添加数据属性用于调试和样式
       .attr('data-source', (d) => (typeof d.source === 'object' ? d.source.id : d.source))
       .attr('data-target', (d) => (typeof d.target === 'object' ? d.target.id : d.target))
       .attr('data-symbol', (d) => d.symbol)
+      .attr('data-curve', (d) => (d.curveDirection !== undefined ? d.curveDirection : 'none'))
+
+    // 初始化路径
+    this.updateLinkPaths()
 
     // 渲染连线标签 - 改进标签显示
     this.linkLabels = this.container
@@ -470,20 +555,7 @@ export class D3AutomataRenderer {
     this.nodeElements.attr('transform', (d) => `translate(${d.x}, ${d.y})`)
 
     // 更新连线路径
-    this.linkElements.attr('d', (d) => {
-      // 直接使用对象引用
-      const source =
-        typeof d.source === 'object' ? d.source : this.nodes.find((n) => n.id === d.source)
-      const target =
-        typeof d.target === 'object' ? d.target : this.nodes.find((n) => n.id === d.target)
-
-      if (!source || !target || source.x === undefined || target.x === undefined) {
-        console.error('无法找到节点或节点缺少坐标:', d, source, target)
-        return ''
-      }
-
-      return this.calculateLinkPath(source, target, d.isSelfLoop, d.loopIndex || 0)
-    })
+    this.updateLinkPaths()
 
     // 更新连线标签位置 - 修正标签位置计算
     this.linkLabels.each((d, i, nodes) => {
@@ -518,8 +590,28 @@ export class D3AutomataRenderer {
         label.classed('self-loop-label', true)
       } else {
         // 常规连线的标签位置
-        const x = (source.x + target.x) / 2
-        const y = (source.y + target.y) / 2
+        let x = (source.x + target.x) / 2
+        let y = (source.y + target.y) / 2
+
+        // 如果是弯曲的连线，根据曲率调整标签位置
+        if (d.curveDirection !== undefined) {
+          const dx = target.x - source.x
+          const dy = target.y - source.y
+
+          // 计算单位向量
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          if (distance > 0) {
+            // 垂直于连线的方向向量
+            const perpX = -dy / distance
+            const perpY = dx / distance
+
+            // 根据曲率调整标签偏移
+            const offset = Math.min(distance * 0.15, 25) * d.curveDirection
+
+            x = x + perpX * offset
+            y = y + perpY * offset
+          }
+        }
 
         label.attr('transform', `translate(${x}, ${y})`)
         label.classed('self-loop-label', false)
@@ -582,6 +674,30 @@ export class D3AutomataRenderer {
   public destroy() {
     if (this.simulation) this.simulation.stop()
     if (this.tooltipDiv) this.tooltipDiv.remove()
+  }
+
+  // 更新连线路径
+  private updateLinkPaths() {
+    this.linkElements.attr('d', (d) => {
+      // 直接使用对象引用
+      const source =
+        typeof d.source === 'object' ? d.source : this.nodes.find((n) => n.id === d.source)
+      const target =
+        typeof d.target === 'object' ? d.target : this.nodes.find((n) => n.id === d.target)
+
+      if (!source || !target || source.x === undefined || target.x === undefined) {
+        console.error('无法找到节点或节点缺少坐标:', d, source, target)
+        return ''
+      }
+
+      return this.calculateLinkPath(
+        source,
+        target,
+        d.isSelfLoop,
+        d.loopIndex || 0,
+        d.curveDirection,
+      )
+    })
   }
 }
 

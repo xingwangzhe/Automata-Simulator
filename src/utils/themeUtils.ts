@@ -57,4 +57,7 @@ export function applyThemeColors() {
     '--self-loop-label-bg',
     getSystemTheme() === 'dark' ? '#4a3b00' : '#fff8e1',
   )
+  // 添加双向边颜色变量
+  document.documentElement.style.setProperty('--bidirectional-edge-1', colors.primary)
+  document.documentElement.style.setProperty('--bidirectional-edge-2', colors.info)
 }
