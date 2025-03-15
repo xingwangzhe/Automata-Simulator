@@ -31,7 +31,7 @@
 
       <!-- 无自动机时的提示 -->
       <div class="notification is-info is-light py-2 px-3" v-if="!hasAutomata">
-        <p>输入正则表达式并点击生成按钮查看自动机图,节点自身带有标签表示自环</p>
+        <p>输入正则表达式并点击生成按钮查看自动机图</p>
       </div>
     </div>
   </div>

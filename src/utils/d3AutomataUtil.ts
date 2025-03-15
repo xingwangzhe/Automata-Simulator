@@ -224,33 +224,50 @@ export class D3AutomataRenderer {
 
     const defs = this.svg.append('defs')
 
+    // 添加阴影滤镜效果
+    const filter = defs
+      .append('filter')
+      .attr('id', 'glow')
+      .attr('x', '-40%')
+      .attr('y', '-40%')
+      .attr('width', '180%')
+      .attr('height', '180%')
+
+    filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur')
+
+    filter
+      .append('feComposite')
+      .attr('in', 'blur')
+      .attr('in2', 'SourceGraphic')
+      .attr('operator', 'over')
+
     // 常规箭头
     defs
       .append('marker')
       .attr('id', 'arrow')
       .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 8) // 增大，使箭头不会位于节点内部
+      .attr('refX', 10) // 墛大，使箭头不会位于节点内部
       .attr('refY', 0)
-      .attr('markerWidth', 8) // 增大尺寸
-      .attr('markerHeight', 8)
+      .attr('markerWidth', 10) // 墛大尺寸
+      .attr('markerHeight', 10)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#666')
+      .attr('class', 'arrow-head')
 
     // 自环箭头（更大、更明显）
     defs
       .append('marker')
       .attr('id', 'arrow-loop')
       .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 10) // 墛大refX确保箭头正确位置
+      .attr('refX', 12) // 墛大refX确保箭头正确位置
       .attr('refY', 0)
-      .attr('markerWidth', 10)
-      .attr('markerHeight', 10)
+      .attr('markerWidth', 12)
+      .attr('markerHeight', 12)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#ff7300')
+      .attr('class', 'arrow-head-loop')
   }
 
   // 渲染图表
@@ -266,18 +283,18 @@ export class D3AutomataRenderer {
       .selectAll('path')
       .data(this.links)
       .join('path')
-      .attr('class', 'link')
-      .attr('stroke', (d) => (d.isSelfLoop ? '#ff7300' : '#ff4500')) // 使用更明显的颜色
-      .attr('stroke-width', (d) => (d.isSelfLoop ? 3 : 2.5)) // 墛加线宽
-      .attr('stroke-dasharray', (d) => (d.symbol === 'ε' ? '5,5' : 'none'))
-      .attr('opacity', 1) // 增加不透明度
+      .attr('class', (d) => (d.isSelfLoop ? 'link self-loop' : 'link'))
+      .attr('stroke-width', (d) => (d.isSelfLoop ? 3 : 2.5))
+      .attr('stroke-dasharray', '5,5') // 所有连线都使用虚线
+      .attr('opacity', 1)
       .attr('fill', 'none')
       .attr('marker-end', (d) => (d.isSelfLoop ? 'url(#arrow-loop)' : 'url(#arrow)'))
       // 添加调试信息
       .attr('data-source', (d) => (typeof d.source === 'object' ? d.source.id : d.source))
       .attr('data-target', (d) => (typeof d.target === 'object' ? d.target.id : d.target))
+      .attr('data-symbol', (d) => d.symbol)
 
-    // 渲染连线标签
+    // 渲染连线标签 - 改进标签显示
     this.linkLabels = this.container
       .select('.labels')
       .selectAll('g')
@@ -289,10 +306,8 @@ export class D3AutomataRenderer {
     this.linkLabels.selectAll('rect').remove()
     this.linkLabels
       .append('rect')
-      .attr('rx', 4)
-      .attr('ry', 4)
-      .attr('fill', 'white')
-      .attr('stroke', '#ddd')
+      .attr('rx', 5)
+      .attr('ry', 5)
       .attr('stroke-width', 1)
       .attr('opacity', 0.9)
 
@@ -303,8 +318,8 @@ export class D3AutomataRenderer {
       .text((d) => d.symbol)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'middle')
-      .attr('fill', '#333')
-      .attr('font-size', '12px')
+      .attr('font-size', '14px')
+      .attr('font-weight', 'bold')
 
     // 渲染节点
     this.nodeElements = this.container
@@ -312,7 +327,13 @@ export class D3AutomataRenderer {
       .selectAll('.node')
       .data(this.nodes)
       .join('g')
-      .attr('class', 'node')
+      .attr('class', (d) => {
+        let classes = 'node'
+        if (d.isStart) classes += ' start'
+        if (d.isAccepting) classes += ' accepting'
+        if (d.isActive) classes += ' active'
+        return classes
+      })
       .call(
         d3
           .drag()
@@ -335,7 +356,7 @@ export class D3AutomataRenderer {
         this.tooltipDiv
           .html(
             `
-          <div>状态: ${d.name}</div>
+          <div><strong>状态: ${d.name}</strong></div>
           ${d.isStart ? '<div>✓ 开始状态</div>' : ''}
           ${d.isAccepting ? '<div>✓ 接受状态</div>' : ''}
         `,
@@ -354,10 +375,10 @@ export class D3AutomataRenderer {
       .filter((d) => d.isAccepting)
       .append('circle')
       .attr('class', 'outer')
-      .attr('r', this.nodeRadius + 5)
+      .attr('r', this.nodeRadius + 6)
       .attr('fill', 'none')
       .attr('stroke', '#91cc75')
-      .attr('stroke-width', 2)
+      .attr('stroke-width', 3)
 
     // 绘制节点主体
     this.nodeElements.selectAll('circle.main').remove()
@@ -367,7 +388,7 @@ export class D3AutomataRenderer {
       .attr('r', this.nodeRadius)
       .attr('fill', (d) => (d.isAccepting ? '#91cc75' : '#5470c6'))
       .attr('stroke', (d) => (d.isActive ? '#ff9900' : d.isStart ? '#ff0000' : '#999'))
-      .attr('stroke-width', (d) => (d.isActive ? 5 : d.isStart ? 4 : 1))
+      .attr('stroke-width', (d) => (d.isActive ? 6 : d.isStart ? 5 : 3)) // 墛加描边粗细
 
     // 添加节点标签
     this.nodeElements.selectAll('text').remove()
@@ -450,10 +471,20 @@ export class D3AutomataRenderer {
       node.isActive = stateIds.includes(node.id)
     })
 
+    // 更新节点类
+    this.nodeElements.attr('class', (d) => {
+      let classes = 'node'
+      if (d.isStart) classes += ' start'
+      if (d.isAccepting) classes += ' accepting'
+      if (d.isActive) classes += ' active'
+      return classes
+    })
+
     this.nodeElements
       .select('circle.main')
       .attr('stroke', (d) => (d.isActive ? '#ff9900' : d.isStart ? '#ff0000' : '#999'))
-      .attr('stroke-width', (d) => (d.isActive ? 5 : d.isStart ? 4 : 1))
+      .attr('stroke-width', (d) => (d.isActive ? 6 : d.isStart ? 5 : 3))
+      .attr('filter', (d) => (d.isActive ? 'url(#glow)' : null))
   }
 
   // 重置视图（缩放和位置）

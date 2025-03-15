@@ -1,5 +1,5 @@
 <template>
-  <div class="chart-container" ref="chartContainer"></div>
+  <div class="chart-container bulma-bg" ref="chartContainer"></div>
 </template>
 
 <script setup lang="ts">
@@ -124,12 +124,25 @@ function handleResize() {
 }
 
 onMounted(() => {
+  // 检测当前模式
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  console.log("当前模式:", isDarkMode ? "暗色" : "亮色");
+
   // 添加足够长的延迟确保DOM完全挂载并有宽高
   setTimeout(() => {
     initChart();
   }, 300);
 
   window.addEventListener('resize', handleResize);
+
+  // 监听系统主题变化
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    console.log("主题变化为:", e.matches ? "暗色" : "亮色");
+    if (renderer.value) {
+      // 重新渲染以适应新主题
+      initChart();
+    }
+  });
 });
 
 onUnmounted(() => {
@@ -146,7 +159,29 @@ onUnmounted(() => {
   height: 100%;
   min-height: 350px;
   position: relative;
-  background-color: #fafafa;
+}
+
+.bulma-bg {
+  /* 使用Bulma的自适应背景色 */
+  background-color: var(--bulma-bg-color, white);
+}
+
+/* 亮色模式 */
+:root {
+  --bulma-bg-color: #f5f5f5;
+  --chart-bg: #f5f5f5;
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  .bulma-bg {
+    background-color: #121212;
+  }
+
+  :root {
+    --bulma-bg-color: #121212;
+    --chart-bg: #121212;
+  }
 }
 
 /* 添加样式使连线和箭头更明显 */
