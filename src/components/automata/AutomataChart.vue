@@ -68,16 +68,11 @@ async function initChart() {
       return;
     }
 
-    // 添加额外的调试
-    if (links.length === 0) {
-      console.warn("没有连线数据");
-    }
-
     // 设置数据并渲染图表
     renderer.value.setData(nodes, links, props.title);
 
     // 如果正在模拟，高亮当前状态
-    if (props.currentStates.length > 0) {
+    if (props.isSimulating && props.currentStates && props.currentStates.length > 0) {
       renderer.value.highlightStates(props.currentStates);
     }
   } catch (error) {
@@ -98,13 +93,30 @@ function highlightCurrentStates() {
   }
 }
 
-// 监听数据变化
-watch(() => props.automata, (newAutomata, oldAutomata) => {
-  // 只有自动机对象完全改变时才重新初始化图表
-  if (JSON.stringify(newAutomata) !== JSON.stringify(oldAutomata)) {
-    initChart();
+// 销毁时清理资源
+onUnmounted(() => {
+  if (renderer.value) {
+    renderer.value.destroy();
   }
-}, { deep: true });
+  window.removeEventListener('resize', handleResize);
+});
+
+// 强制完全重新初始化图表
+function forceReinitChart() {
+  console.log("强制重新初始化图表");
+  // 确保容器内容清空
+  if (chartContainer.value) {
+    const container = chartContainer.value as HTMLElement;
+    container.innerHTML = '';
+  }
+  // 重新初始化图表
+  initChart();
+}
+
+// 监听数据变化
+watch(() => props.automata, () => {
+  forceReinitChart();
+}, { deep: true, immediate: false });
 
 // 监听当前状态变化，只更新高亮
 watch(() => props.currentStates, (newStates) => {
@@ -112,12 +124,9 @@ watch(() => props.currentStates, (newStates) => {
   highlightCurrentStates();
 }, { deep: true });
 
-// 监听标题变化，重新设置数据
+// 监听标题变化
 watch(() => props.title, () => {
-  if (renderer.value && props.automata) {
-    const { nodes, links } = convertAutomataToD3Format(props.automata);
-    renderer.value.setData(nodes, links, props.title);
-  }
+  forceReinitChart();
 });
 
 // 监听模拟状态变化
@@ -171,12 +180,6 @@ onMounted(() => {
   }, 500); // 给图表足够的时间来初始化
 });
 
-onUnmounted(() => {
-  if (renderer.value) {
-    renderer.value.destroy();
-  }
-  window.removeEventListener('resize', handleResize);
-});
 </script>
 
 <style scoped>

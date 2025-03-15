@@ -1,6 +1,6 @@
 <template>
   <div class="box automata-container">
-    <div class="tabs">
+    <div class="tabs is-boxed">
       <ul>
         <li :class="{ 'is-active': automataType === 'NFA' }">
           <a @click="setAutomataType('NFA')">NFA</a>
@@ -11,7 +11,7 @@
       </ul>
     </div>
     <div class="chart-wrapper">
-      <AutomataChart :automata="currentAutomata" :current-states="currentState?.currentStates || []"
+      <AutomataChart :key="chartKey" :automata="currentAutomata" :current-states="currentState?.currentStates || []"
         :is-simulating="isSimulating" :title="`${automataType}自动机`" />
     </div>
 
@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, ref } from 'vue';
 import { useAutomataStore } from '../stores/automataStore';
 import AutomataChart from './automata/AutomataChart.vue';
 import { debugAutomata } from '../utils/debugTools';
@@ -64,6 +64,9 @@ const hasAutomata = computed(() =>
   store.automata.states &&
   store.automata.states.length > 0
 );
+
+// 添加chart key以强制重新渲染
+const chartKey = ref(0);
 
 // 获取当前使用的自动机数据
 const currentAutomata = computed(() => {
@@ -79,10 +82,14 @@ const currentAutomata = computed(() => {
 });
 
 function setAutomataType(type: string) {
+  if (type === automataType.value) return; // 避免不必要的重新渲染
+
   store.setAutomataType(type);
 
+  // 强制图表重新渲染
+  chartKey.value++;
+
   // 当切换自动机类型时，确保高亮状态保持一致
-  // 这样从NFA切换到DFA时高亮不会丢失
   if (store.isSimulating && store.currentState) {
     const currentStateIds = store.currentState.currentStates;
     console.log(`切换到${type}，保持高亮状态:`, currentStateIds);
@@ -115,6 +122,9 @@ const hasNextStep = computed(() => store.hasNextStep);
 
 // 监听自动机类型变化，确保当前活动状态正确高亮
 watch(automataType, () => {
+  // 强制图表重新渲染
+  chartKey.value++;
+
   if (store.isSimulating && currentAutomata.value) {
     // 给高亮状态一个短暂延迟，确保图表已经重新渲染
     setTimeout(() => {
@@ -144,6 +154,21 @@ function resetSimulation() {
   display: flex;
   flex-direction: column;
   height: 520px;
+  position: relative;
+  /* 确保容器是相对定位的 */
+}
+
+.tabs {
+  margin-bottom: 0.5rem;
+  position: relative;
+  /* 确保选项卡正确定位 */
+  z-index: 10;
+  /* 提高z-index确保不被其他元素覆盖 */
+}
+
+.tabs ul {
+  padding-left: 0;
+  /* 确保没有额外的填充 */
 }
 
 .chart-wrapper {
@@ -152,6 +177,9 @@ function resetSimulation() {
   border: 1px solid #eee;
   border-radius: 4px;
   margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+  /* 确保图表在标签页之下 */
 }
 
 .simulation-controls {

@@ -207,8 +207,22 @@ export const useAutomataStore = defineStore('automata', {
 
     // 设置自动机类型
     setAutomataType(type: string) {
+      if (this.automataType === type) return
+
+      console.log(`切换自动机类型从 ${this.automataType} 到 ${type}`)
       this.automataType = type
-      // 如果已经有automata，重新分析
+
+      // 更新当前展示的自动机
+      if (this.automata) {
+        this.automata.states =
+          this.automataType === 'NFA' ? this.automata.nfa.states : this.automata.dfa.states
+        this.automata.transitions =
+          this.automataType === 'NFA'
+            ? this.automata.nfa.transitions
+            : this.automata.dfa.transitions
+      }
+
+      // 如果已经有automata并且正在模拟，重新分析
       if (this.automata && this.isSimulating) {
         this.analyze()
       }
