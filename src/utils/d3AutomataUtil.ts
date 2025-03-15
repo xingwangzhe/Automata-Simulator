@@ -119,6 +119,19 @@ export class D3AutomataRenderer {
     // 转换数据格式 - 确保source和target是对象引用而非字符串
     this.nodes = [...nodes]
 
+    // 为节点设置随机初始位置，避免集中在一点
+    this.nodes.forEach((node) => {
+      if (!node.x || !node.y) {
+        // 如果是首次渲染或缺少坐标，分配随机位置
+        node.x = Math.random() * this.width * 0.8 + this.width * 0.1 // 在可视区域内随机分布
+        node.y = Math.random() * this.height * 0.8 + this.height * 0.1
+      }
+
+      // 重置固定状态，允许节点在新布局中自由移动
+      node.fx = null
+      node.fy = null
+    })
+
     // 创建节点ID到节点对象的映射
     const idToNode = new Map()
     this.nodes.forEach((node) => idToNode.set(node.id, node))
@@ -159,6 +172,20 @@ export class D3AutomataRenderer {
     this.simulation.nodes(this.nodes)
     this.simulation.force('link').links(this.links)
     this.simulation.alpha(1).restart()
+
+    // 增强力导向模拟的初始强度，确保节点充分分散
+    this.simulation.force('charge', d3.forceManyBody().strength(-1000)) // 墛大排斥力
+    this.simulation.force('collide', d3.forceCollide().radius(this.nodeRadius * 2)) // 墛大碰撞半径
+
+    // 启动模拟，使用较高的初始alpha值确保充分"震荡"
+    this.simulation.alpha(0.8).restart()
+
+    // 运行一段时间后逐渐恢复正常力度
+    setTimeout(() => {
+      this.simulation.force('charge', d3.forceManyBody().strength(-800))
+      this.simulation.force('collide', d3.forceCollide().radius(this.nodeRadius * 1.5))
+      this.simulation.alpha(0.3).restart()
+    }, 1000)
   }
 
   // 处理双向链接，为它们添加方向标记，使曲线在不同方向弯曲
@@ -182,11 +209,11 @@ export class D3AutomataRenderer {
         // 创建路径键 (不排序，保持方向)
         const pathKey = `${sourceId}->${targetId}`
 
-        // 增加这条路径的计数
+        // 墛加这条路径的计数
         const count = (pathCounts.get(pathKey) || 0) + 1
         pathCounts.set(pathKey, count)
 
-        // 如果同一方向有多条边，增加曲率以分开显示
+        // 如果同一方向有多条边，增大曲率以分开显示
         if (count > 1) {
           link.curveDirection = 0.2 * count
         }
@@ -676,9 +703,29 @@ export class D3AutomataRenderer {
     }
   }
 
-  // 重置视图（缩放和位置）
-  public resetView() {
+  // 重置视图并优化布局
+  public resetView(applyForceLayout = false) {
+    // 重置缩放和位置
     this.svg.transition().duration(750).call(this.zoom.transform, d3.zoomIdentity)
+
+    if (applyForceLayout) {
+      // 重置节点固定状态，允许其自由移动
+      this.nodes.forEach((node) => {
+        node.fx = null
+        node.fy = null
+      })
+
+      // 重新应用力导向布局
+      this.simulation
+        .force('charge', d3.forceManyBody().strength(-1000)) // 临时增加排斥力
+        .alpha(0.8) // 设置较高初始alpha值
+        .restart()
+
+      // 稍后恢复正常设置
+      setTimeout(() => {
+        this.simulation.force('charge', d3.forceManyBody().strength(-800)).alpha(0.3).restart()
+      }, 1000)
+    }
   }
 
   // 更改图表大小（响应窗口大小变化）

@@ -113,9 +113,23 @@ function forceReinitChart() {
   initChart();
 }
 
-// 监听数据变化
-watch(() => props.automata, () => {
+// 监听数据变化，使用节点分布优化
+watch(() => props.automata, (newAutomata, oldAutomata) => {
+  const isFirstRender = !oldAutomata;
+  const hasDifferentNodeCount =
+    newAutomata?.states?.length !== oldAutomata?.states?.length;
+
+  // 完全重新初始化图表
   forceReinitChart();
+
+  // 给节点布局一些时间来初始化，然后适当调整
+  setTimeout(() => {
+    if (renderer.value) {
+      if (hasDifferentNodeCount || isFirstRender) {
+        renderer.value.resetView(true); // 应用力导向布局优化
+      }
+    }
+  }, 300);
 }, { deep: true, immediate: false });
 
 // 监听当前状态变化，只更新高亮
@@ -159,6 +173,12 @@ onMounted(() => {
   // 添加足够长的延迟确保DOM完全挂载并有宽高
   setTimeout(() => {
     initChart();
+    // 初始化后应用布局优化
+    setTimeout(() => {
+      if (renderer.value) {
+        renderer.value.resetView(true);
+      }
+    }, 500);
   }, 300);
 
   window.addEventListener('resize', handleResize);

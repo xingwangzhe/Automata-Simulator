@@ -89,11 +89,8 @@ function setAutomataType(type: string) {
   // 强制图表重新渲染
   chartKey.value++;
 
-  // 当切换自动机类型时，确保高亮状态保持一致
-  if (store.isSimulating && store.currentState) {
-    const currentStateIds = store.currentState.currentStates;
-    console.log(`切换到${type}，保持高亮状态:`, currentStateIds);
-  }
+  // 当切换自动机类型时，确保高亮状态保持一致，并优化节点布局
+  console.log(`切换到${type}，重新布局节点`);
 }
 
 // 调试观察自动机变化
@@ -124,18 +121,7 @@ const hasNextStep = computed(() => store.hasNextStep);
 watch(automataType, () => {
   // 强制图表重新渲染
   chartKey.value++;
-
-  if (store.isSimulating && currentAutomata.value) {
-    // 给高亮状态一个短暂延迟，确保图表已经重新渲染
-    setTimeout(() => {
-      const currentState = store.currentState;
-      if (currentState && currentState.currentStates) {
-        console.log(`自动机类型变化后更新高亮:`, currentState.currentStates);
-      }
-    }, 300);
-  }
 });
-
 function prevStep() {
   store.prevStep();
 }
