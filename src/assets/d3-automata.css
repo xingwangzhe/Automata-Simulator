@@ -42,11 +42,73 @@
   stroke: var(--bidirectional-edge-2, #3e8ed0) !important;
 }
 
+/* 双向边样式 */
+.link.curved-positive {
+  stroke: var(--bidirectional-edge-1, #00d1b2) !important;
+  stroke-width: 2.5px !important;
+}
+
+.link.curved-negative {
+  stroke: var(--bidirectional-edge-2, #3e8ed0) !important;
+  stroke-width: 2.5px !important;
+}
+
+/* 曲线边的统一样式 */
+.link.curved {
+  stroke: var(--curve-color, #00d1b2) !important;
+  stroke-width: 2.5px !important;
+}
+
+/* 双向边样式 - 上弯曲和下弯曲的边使用不同颜色 */
+.link.curved-upper {
+  stroke: var(--upper-curve-color, #00d1b2) !important;
+}
+
+.link.curved-lower {
+  stroke: var(--lower-curve-color, #3e8ed0) !important;
+}
+
+/* 双向边标签样式 */
+.curved-positive + .link-label rect {
+  fill: var(--bidirectional-label-1-bg, #e6fff8);
+  stroke: var(--bidirectional-edge-1, #00d1b2);
+}
+
+.curved-negative + .link-label rect {
+  fill: var(--bidirectional-label-2-bg, #e6f2ff);
+  stroke: var(--bidirectional-edge-2, #3e8ed0);
+}
+
+/* 边标签样式 */
+.curved-upper + .link-label rect {
+  fill: var(--upper-curve-label-bg, #e6fff8);
+  stroke: var(--upper-curve-color, #00d1b2);
+}
+
+.curved-lower + .link-label rect {
+  fill: var(--lower-curve-label-bg, #e6f2ff);
+  stroke: var(--lower-curve-color, #3e8ed0);
+}
+
+/* 曲线边的标签样式 */
+.curved + .link-label rect {
+  fill: var(--curve-label-bg, #e6fff8);
+  stroke: var(--curve-color, #00d1b2);
+}
+
 /* 确保箭头可见 */
 marker#arrow path,
 marker#arrow-loop path {
   fill-opacity: 1 !important;
   fill: var(--arrow-color, #00d1b2) !important;
+}
+
+.curved-positive marker#arrow path {
+  fill: var(--bidirectional-edge-1, #00d1b2) !important;
+}
+
+.curved-negative marker#arrow path {
+  fill: var(--bidirectional-edge-2, #3e8ed0) !important;
 }
 
 marker#arrow-loop path {
@@ -113,26 +175,20 @@ marker#arrow-loop path {
 
 .self-loop-label text {
   font-weight: bold;
-  font-size: 12px;
 }
 
 /* 适配暗色模式 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --tooltip-background: #363636;
-    --tooltip-color: #f5f5f5;
-    --tooltip-border: #4a4a4a;
-    --link-color: #00e8c6; /* 更亮的颜色适合暗色模式 */
-    --link-hover-color: #00ffdd;
-    --self-loop-color: #ffd83d; /* 更亮的黄色 */
-    --arrow-color: #00e8c6;
-    --label-bg: #363636;
-    --label-border: #4a4a4a;
-    --label-text: #f5f5f5;
-    --self-loop-label-bg: #4a3b00;
-    --self-loop-border: #bb8c00;
-    --bidirectional-edge-1: #00e8c6; /* 第一个方向的边颜色 */
     --bidirectional-edge-2: #48c5ff; /* 第二个方向的边颜色 */
+    --bidirectional-label-1-bg: #003329;
+    --bidirectional-label-2-bg: #002952;
+    --upper-curve-color: #00ffcc; /* 上弯曲边颜色 */
+    --lower-curve-color: #66b3ff; /* 下弯曲边颜色 */
+    --upper-curve-label-bg: #003329;
+    --lower-curve-label-bg: #002952;
+    --curve-color: #00ffcc; /* 曲线边颜色 */
+    --curve-label-bg: #003329;
   }
 
   .chart-container {
@@ -146,5 +202,25 @@ marker#arrow-loop path {
 
   .link-label text {
     fill: #f5f5f5;
+  }
+
+  .curved-positive + .link-label rect {
+    fill: var(--bidirectional-label-1-bg, #003329);
+  }
+
+  .curved-negative + .link-label rect {
+    fill: var(--bidirectional-label-2-bg, #002952);
+  }
+
+  .curved-upper + .link-label rect {
+    fill: var(--upper-curve-label-bg, #003329);
+  }
+
+  .curved-lower + .link-label rect {
+    fill: var(--lower-curve-label-bg, #002952);
+  }
+
+  .curved + .link-label rect {
+    fill: var(--curve-label-bg, #003329);
   }
 }

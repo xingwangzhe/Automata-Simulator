@@ -60,4 +60,36 @@ export function applyThemeColors() {
   // 添加双向边颜色变量
   document.documentElement.style.setProperty('--bidirectional-edge-1', colors.primary)
   document.documentElement.style.setProperty('--bidirectional-edge-2', colors.info)
+
+  // 双向边颜色 - 使用更鲜明的对比色
+  document.documentElement.style.setProperty(
+    '--bidirectional-edge-1',
+    getSystemTheme() === 'dark' ? '#00ffcc' : '#00c4a7',
+  )
+  document.documentElement.style.setProperty(
+    '--bidirectional-edge-2',
+    getSystemTheme() === 'dark' ? '#66b3ff' : '#3273dc',
+  )
+
+  // 双向边标签背景色
+  document.documentElement.style.setProperty(
+    '--bidirectional-label-1-bg',
+    getSystemTheme() === 'dark' ? '#003329' : '#e6fff8',
+  )
+  document.documentElement.style.setProperty(
+    '--bidirectional-label-2-bg',
+    getSystemTheme() === 'dark' ? '#002952' : '#e6f2ff',
+  )
+
+  // 简化为单一曲线颜色
+  document.documentElement.style.setProperty(
+    '--curve-color',
+    getSystemTheme() === 'dark' ? '#00ffcc' : '#00c4a7',
+  )
+
+  // 简化为单一标签背景色
+  document.documentElement.style.setProperty(
+    '--curve-label-bg',
+    getSystemTheme() === 'dark' ? '#003329' : '#e6fff8',
+  )
 }

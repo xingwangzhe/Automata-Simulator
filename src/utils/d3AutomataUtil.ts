@@ -163,60 +163,47 @@ export class D3AutomataRenderer {
 
   // 处理双向链接，为它们添加方向标记，使曲线在不同方向弯曲
   private processBidirectionalLinks() {
-    // 创建一个映射来跟踪节点对之间的连接
-    const connectionMap = new Map<string, Link[]>()
+    // 对于所有非自环连接，设置统一的曲率
+    this.links.forEach((link) => {
+      if (!link.isSelfLoop) {
+        // 所有非自环边使用相同的曲率值，在绘制时再决定方向
+        link.curveDirection = 0.5
+      }
+    })
 
-    // 收集所有非自环连接
+    // 记录多条相同路径的连接
+    const pathCounts = new Map<string, number>()
+
     this.links.forEach((link) => {
       if (!link.isSelfLoop) {
         const sourceId = typeof link.source === 'object' ? link.source.id : link.source
         const targetId = typeof link.target === 'object' ? link.target.id : link.target
 
-        // 创建唯一标识符，确保同一对节点的连接被分组
-        const key = [sourceId, targetId].sort().join('-')
+        // 创建路径键 (不排序，保持方向)
+        const pathKey = `${sourceId}->${targetId}`
 
-        if (!connectionMap.has(key)) {
-          connectionMap.set(key, [])
-        }
-        connectionMap.get(key)?.push(link)
-      }
-    })
+        // 增加这条路径的计数
+        const count = (pathCounts.get(pathKey) || 0) + 1
+        pathCounts.set(pathKey, count)
 
-    // 处理双向连接
-    connectionMap.forEach((links, key) => {
-      if (links.length > 1) {
-        // 检查是否为双向连接（即两个节点之间既有A→B也有B→A）
-        const directions = new Set()
-        let isBidirectional = false
-
-        links.forEach((link) => {
-          const sourceId = typeof link.source === 'object' ? link.source.id : link.source
-          const targetId = typeof link.target === 'object' ? link.target.id : link.target
-          directions.add(`${sourceId}-${targetId}`)
-        })
-
-        // 检查是否有方向相反的两条边
-        if (links.length >= 2 && directions.size >= 2) {
-          isBidirectional = true
-        }
-
-        if (isBidirectional) {
-          // 标记双向连接，一边向上弯曲，一边向下弯曲
-          links.forEach((link, index) => {
-            // 向上或向下的曲率
-            const curveDirection = index % 2 === 0 ? 0.3 : -0.3
-            link.curveDirection = curveDirection
-          })
-        } else if (links.length > 1) {
-          // 即使不是双向的，多条连接也需要错开
-          links.forEach((link, index) => {
-            const baseCurve = 0.1
-            const increment = 0.1
-            link.curveDirection = baseCurve + index * increment
-          })
+        // 如果同一方向有多条边，增加曲率以分开显示
+        if (count > 1) {
+          link.curveDirection = 0.2 * count
         }
       }
     })
+
+    // 调试输出
+    console.log(
+      '处理后的连线数据:',
+      this.links
+        .filter((link) => !link.isSelfLoop)
+        .map((link) => ({
+          source: typeof link.source === 'object' ? link.source.id : link.source,
+          target: typeof link.target === 'object' ? link.target.id : link.target,
+          curve: link.curveDirection,
+        })),
+    )
   }
 
   // 计算自环路径
@@ -226,10 +213,10 @@ export class D3AutomataRenderer {
     nodeRadius: number,
     loopIndex: number = 0,
   ): string {
-    // 根据loopIndex调整自环位置，确保多个自环不重叠
-    const loopRadius = nodeRadius * 1.5
-    const startAngle = -Math.PI / 4 + (loopIndex * Math.PI) / 2
-    const endAngle = startAngle + Math.PI * 1.5
+    // 计算自环的半径和角度
+    const loopRadius = nodeRadius * 1.5 + loopIndex * 10
+    const startAngle = Math.PI / 2
+    const endAngle = (Math.PI * 3) / 2
 
     // 计算起点和终点
     const startX = x + nodeRadius * Math.cos(startAngle)
@@ -316,6 +303,9 @@ export class D3AutomataRenderer {
       // 控制点的偏移距离，根据边的长度调整
       const offset = Math.min(distance * 0.3, 50) * curveDirection
 
+      // 关键修正: 不再考虑源目标ID大小来决定偏移方向
+      // 只使用固定的偏移方向, 因为方向相反的两条边应该采用相同的偏移方向
+
       // 控制点位置
       const controlX = (sourceX + targetX) / 2 + perpX * offset
       const controlY = (sourceY + targetY) / 2 + perpY * offset
@@ -394,13 +384,22 @@ export class D3AutomataRenderer {
       .selectAll('path')
       .data(this.links)
       .join('path')
-      .attr('class', (d) => (d.isSelfLoop ? 'link self-loop' : 'link'))
+      .attr('class', (d) => {
+        let classes = d.isSelfLoop ? 'link self-loop' : 'link'
+
+        // 添加通用的弯曲边类，无需区分上下，只区分是否有曲率
+        if (!d.isSelfLoop && d.curveDirection !== undefined) {
+          classes += ' curved' // 简化为一个曲线类
+        }
+
+        return classes
+      })
       .attr('stroke-width', (d) => (d.isSelfLoop ? 3 : 2.5))
-      .attr('stroke-dasharray', '5,5') // 所有连线都使用虚线
+      .attr('stroke-dasharray', '5,5')
       .attr('opacity', 1)
       .attr('fill', 'none')
       .attr('marker-end', (d) => (d.isSelfLoop ? 'url(#arrow-loop)' : 'url(#arrow)'))
-      // 添加数据属性用于调试和样式
+      // 添加数据属性用于调试和CSS选择器
       .attr('data-source', (d) => (typeof d.source === 'object' ? d.source.id : d.source))
       .attr('data-target', (d) => (typeof d.target === 'object' ? d.target.id : d.target))
       .attr('data-symbol', (d) => d.symbol)
