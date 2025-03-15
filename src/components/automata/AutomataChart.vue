@@ -88,7 +88,14 @@ async function initChart() {
 // 高亮当前状态
 function highlightCurrentStates() {
   if (!renderer.value) return;
-  renderer.value.highlightStates(props.currentStates);
+
+  if (props.currentStates && props.currentStates.length > 0) {
+    console.log(`为${props.currentStates.length}个状态应用高亮:`, props.currentStates);
+    renderer.value.highlightStates(props.currentStates);
+  } else {
+    // 移除所有高亮
+    renderer.value.highlightStates([]);
+  }
 }
 
 // 监听数据变化
@@ -100,7 +107,8 @@ watch(() => props.automata, (newAutomata, oldAutomata) => {
 }, { deep: true });
 
 // 监听当前状态变化，只更新高亮
-watch(() => props.currentStates, () => {
+watch(() => props.currentStates, (newStates) => {
+  console.log("当前状态变化:", newStates);
   highlightCurrentStates();
 }, { deep: true });
 
@@ -109,6 +117,17 @@ watch(() => props.title, () => {
   if (renderer.value && props.automata) {
     const { nodes, links } = convertAutomataToD3Format(props.automata);
     renderer.value.setData(nodes, links, props.title);
+  }
+});
+
+// 监听模拟状态变化
+watch(() => props.isSimulating, (isSimulating) => {
+  if (isSimulating) {
+    // 确保在开始模拟时应用高亮
+    highlightCurrentStates();
+  } else {
+    // 模拟结束，清除高亮
+    if (renderer.value) renderer.value.highlightStates([]);
   }
 });
 
@@ -143,6 +162,13 @@ onMounted(() => {
       initChart();
     }
   });
+
+  // 在图表初始化后，确保应用高亮
+  setTimeout(() => {
+    if (props.currentStates && props.currentStates.length > 0) {
+      highlightCurrentStates();
+    }
+  }, 500); // 给图表足够的时间来初始化
 });
 
 onUnmounted(() => {

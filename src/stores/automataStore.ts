@@ -167,7 +167,7 @@ export const useAutomataStore = defineStore('automata', {
             .join(','),
           position: i,
           character: char,
-          currentStates,
+          currentStates, // 确保保存当前活动状态的ID数组
           accepted: i === this.inputString.length - 1 ? accepted : false,
         })
 
@@ -179,6 +179,9 @@ export const useAutomataStore = defineStore('automata', {
 
       this.steps = steps
       this.isAccepted = accepted
+
+      // 确保在currentStep初始化时高亮第一个状态
+      this.currentStep = 0
     },
 
     // 前进一步

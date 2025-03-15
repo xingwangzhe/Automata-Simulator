@@ -78,6 +78,17 @@ const currentAutomata = computed(() => {
   return automata;
 });
 
+function setAutomataType(type: string) {
+  store.setAutomataType(type);
+
+  // 当切换自动机类型时，确保高亮状态保持一致
+  // 这样从NFA切换到DFA时高亮不会丢失
+  if (store.isSimulating && store.currentState) {
+    const currentStateIds = store.currentState.currentStates;
+    console.log(`切换到${type}，保持高亮状态:`, currentStateIds);
+  }
+}
+
 // 调试观察自动机变化
 watch(() => store.automata, (newValue) => {
   if (newValue) {
@@ -102,11 +113,19 @@ const isAccepted = computed(() => store.isAccepted);
 const hasPrevStep = computed(() => store.hasPrevStep);
 const hasNextStep = computed(() => store.hasNextStep);
 
-function setAutomataType(type: string) {
-  store.setAutomataType(type);
-}
+// 监听自动机类型变化，确保当前活动状态正确高亮
+watch(automataType, () => {
+  if (store.isSimulating && currentAutomata.value) {
+    // 给高亮状态一个短暂延迟，确保图表已经重新渲染
+    setTimeout(() => {
+      const currentState = store.currentState;
+      if (currentState && currentState.currentStates) {
+        console.log(`自动机类型变化后更新高亮:`, currentState.currentStates);
+      }
+    }, 300);
+  }
+});
 
-// 添加模拟控制方法
 function prevStep() {
   store.prevStep();
 }

@@ -635,24 +635,45 @@ export class D3AutomataRenderer {
 
   // 高亮活动状态
   public highlightStates(stateIds: string[]) {
+    // 确保stateIds是数组
+    const ids = Array.isArray(stateIds) ? stateIds : [stateIds].filter(Boolean)
+
+    // 记录之前的活动状态
+    const previousActive = this.nodes.filter((node) => node.isActive).map((node) => node.id)
+
+    // 如果状态没有变化，则不需要重新渲染
+    const hasChanged =
+      previousActive.length !== ids.length ||
+      previousActive.some((id) => !ids.includes(id)) ||
+      ids.some((id) => !previousActive.includes(id))
+
+    if (!hasChanged) return
+
+    // 更新节点高亮状态
     this.nodes.forEach((node) => {
-      node.isActive = stateIds.includes(node.id)
+      node.isActive = ids.includes(node.id)
     })
 
-    // 更新节点类
-    this.nodeElements.attr('class', (d) => {
-      let classes = 'node'
-      if (d.isStart) classes += ' start'
-      if (d.isAccepting) classes += ' accepting'
-      if (d.isActive) classes += ' active'
-      return classes
-    })
+    // 如果nodeElements已初始化，则更新样式
+    if (this.nodeElements) {
+      // 更新节点类
+      this.nodeElements.attr('class', (d) => {
+        let classes = 'node'
+        if (d.isStart) classes += ' start'
+        if (d.isAccepting) classes += ' accepting'
+        if (d.isActive) classes += ' active'
+        return classes
+      })
 
-    this.nodeElements
-      .select('circle.main')
-      .attr('stroke', (d) => (d.isActive ? '#ff9900' : d.isStart ? '#ff0000' : '#999'))
-      .attr('stroke-width', (d) => (d.isActive ? 6 : d.isStart ? 5 : 3))
-      .attr('filter', (d) => (d.isActive ? 'url(#glow)' : null))
+      // 设置节点外观
+      this.nodeElements
+        .select('circle.main')
+        .attr('stroke', (d) => (d.isActive ? '#ff9900' : d.isStart ? '#ff0000' : '#999'))
+        .attr('stroke-width', (d) => (d.isActive ? 6 : d.isStart ? 5 : 3))
+        .attr('filter', (d) => (d.isActive ? 'url(#glow)' : null))
+
+      console.log(`高亮状态: ${ids.join(', ')}`)
+    }
   }
 
   // 重置视图（缩放和位置）
