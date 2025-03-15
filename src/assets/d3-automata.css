@@ -1,0 +1,49 @@
+/* D3自动机图样式 */
+.automata-tooltip {
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  pointer-events: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+/* 确保连线可见 */
+.link {
+  stroke-opacity: 1 !important;
+  pointer-events: all;
+  stroke: #ff4500 !important; /* 强制设置明显的红色 */
+  stroke-width: 2.5px !important; /* 强制设置明显的宽度 */
+  transition: all 0.3s;
+}
+
+/* 鼠标悬停在连线上时的效果 */
+.link:hover {
+  stroke-width: 4px !important;
+  stroke: #ff0000 !important;
+  filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.5));
+}
+
+/* 确保箭头可见 */
+marker#arrow path,
+marker#arrow-loop path {
+  fill-opacity: 1 !important;
+  fill: #ff4500 !important; /* 使用与连线匹配的颜色 */
+}
+
+/* 改进节点样式 */
+.node circle.main {
+  stroke-width: 2px;
+  cursor: move;
+}
+
+.node circle.outer {
+  stroke-width: 2px;
+}
+
+/* 调试边框 */
+.chart-container {
+  border: 1px dashed #ccc;
+}
