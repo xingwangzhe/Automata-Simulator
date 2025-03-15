@@ -164,6 +164,7 @@ export class D3AutomataRenderer {
     nodeRadius: number,
     loopIndex: number = 0,
   ): string {
+    // 根据loopIndex调整自环位置，确保多个自环不重叠
     const loopRadius = nodeRadius * 1.5
     const startAngle = -Math.PI / 4 + (loopIndex * Math.PI) / 2
     const endAngle = startAngle + Math.PI * 1.5
@@ -181,6 +182,26 @@ export class D3AutomataRenderer {
     const controlY2 = y + loopRadius * 2.5 * Math.sin(endAngle + Math.PI / 8)
 
     return `M ${startX},${startY} C ${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`
+  }
+
+  // 计算自环标签位置
+  private calculateSelfLoopLabelPosition(
+    x: number,
+    y: number,
+    nodeRadius: number,
+    loopIndex: number = 0,
+  ): { x: number; y: number } {
+    // 计算标签位置在自环弧的最高点
+    const angle = -Math.PI / 4 + (loopIndex * Math.PI) / 2
+
+    // 将标签放在自环的顶部或侧面，而不是中间
+    const labelAngle = angle + Math.PI * 0.75
+    const distance = nodeRadius * 2.2 // 略小于控制点的距离
+
+    return {
+      x: x + distance * Math.cos(labelAngle),
+      y: y + distance * Math.sin(labelAngle),
+    }
   }
 
   // 计算常规连线路径
@@ -309,8 +330,8 @@ export class D3AutomataRenderer {
       .selectAll('g')
       .data(this.links)
       .join('g')
-      .attr('class', 'link-label')
-      // 初始化标签位置 - 这很重要，防止标签聚集在左上角
+      .attr('class', (d) => (d.isSelfLoop ? 'link-label self-loop-label' : 'link-label'))
+      // 初始化标签位置
       .attr('transform', (d) => {
         const source =
           typeof d.source === 'object' ? d.source : this.nodes.find((n) => n.id === d.source)
@@ -320,16 +341,18 @@ export class D3AutomataRenderer {
         if (source && target && source.x !== undefined && target.x !== undefined) {
           if (d.isSelfLoop) {
             const loopIndex = d.loopIndex || 0
-            const angle = -Math.PI / 4 + (loopIndex * Math.PI) / 2 + Math.PI * 0.75
-            const distance = this.nodeRadius * 2.5
-            const x = source.x + distance * Math.cos(angle)
-            const y = source.y + distance * Math.sin(angle)
-            return `translate(${x}, ${y})`
+            const labelPos = this.calculateSelfLoopLabelPosition(
+              source.x,
+              source.y,
+              this.nodeRadius,
+              loopIndex,
+            )
+            return `translate(${labelPos.x}, ${labelPos.y})`
           } else {
             return `translate(${(source.x + target.x) / 2}, ${(source.y + target.y) / 2})`
           }
         }
-        return 'translate(0, 0)' // 如果坐标未定义，使用默认值
+        return 'translate(0, 0)'
       })
 
     // 为标签添加背景矩形
@@ -480,20 +503,26 @@ export class D3AutomataRenderer {
       const rect = label.select('rect')
 
       if (d.isSelfLoop) {
-        // 计算自环标签位置
+        // 使用专门的方法计算自环标签位置
         const loopIndex = d.loopIndex || 0
-        const angle = -Math.PI / 4 + (loopIndex * Math.PI) / 2 + Math.PI * 0.75
-        const distance = this.nodeRadius * 2.5
-        const x = source.x + distance * Math.cos(angle)
-        const y = source.y + distance * Math.sin(angle)
+        const labelPos = this.calculateSelfLoopLabelPosition(
+          source.x,
+          source.y,
+          this.nodeRadius,
+          loopIndex,
+        )
 
-        label.attr('transform', `translate(${x}, ${y})`)
+        label.attr('transform', `translate(${labelPos.x}, ${labelPos.y})`)
+
+        // 为自环标签添加特殊样式
+        label.classed('self-loop-label', true)
       } else {
         // 常规连线的标签位置
         const x = (source.x + target.x) / 2
         const y = (source.y + target.y) / 2
 
         label.attr('transform', `translate(${x}, ${y})`)
+        label.classed('self-loop-label', false)
       }
 
       // 获取文本尺寸并更新背景矩形

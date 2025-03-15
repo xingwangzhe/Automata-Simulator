@@ -97,6 +97,16 @@ marker#arrow-loop path {
   stroke: var(--self-loop-border, #f9a825);
 }
 
+.self-loop-label rect {
+  fill: var(--self-loop-label-bg, #fff8e1);
+  stroke: var(--self-loop-border, #f9a825);
+}
+
+.self-loop-label text {
+  font-weight: bold;
+  font-size: 12px;
+}
+
 /* 适配暗色模式 */
 @media (prefers-color-scheme: dark) {
   :root {
