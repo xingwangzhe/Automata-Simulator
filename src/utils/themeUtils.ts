@@ -47,4 +47,14 @@ export function applyThemeColors() {
   document.documentElement.style.setProperty('--link-color', colors.chartEdge)
   document.documentElement.style.setProperty('--self-loop-color', colors.chartSelfLoop)
   document.documentElement.style.setProperty('--arrow-color', colors.chartEdge)
+  document.documentElement.style.setProperty('--tooltip-background', colors.background)
+  document.documentElement.style.setProperty('--tooltip-color', colors.text)
+  document.documentElement.style.setProperty('--tooltip-border', colors.border)
+  document.documentElement.style.setProperty('--label-bg', colors.background)
+  document.documentElement.style.setProperty('--label-border', colors.border)
+  document.documentElement.style.setProperty('--label-text', colors.text)
+  document.documentElement.style.setProperty(
+    '--self-loop-label-bg',
+    getSystemTheme() === 'dark' ? '#4a3b00' : '#fff8e1',
+  )
 }

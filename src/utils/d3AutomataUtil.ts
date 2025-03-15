@@ -118,18 +118,27 @@ export class D3AutomataRenderer {
     // 转换数据格式 - 确保source和target是对象引用而非字符串
     this.nodes = [...nodes]
 
-    // 处理连线 - 确保使用对象引用
+    // 创建节点ID到节点对象的映射
     const idToNode = new Map()
     this.nodes.forEach((node) => idToNode.set(node.id, node))
 
+    // 对于每条边，确保source和target是对节点对象的引用
     this.links = links.map((link) => {
       const sourceId = typeof link.source === 'string' ? link.source : link.source.id
       const targetId = typeof link.target === 'string' ? link.target : link.target.id
 
+      // 查找对应的节点对象
+      const sourceNode = idToNode.get(sourceId)
+      const targetNode = idToNode.get(targetId)
+
+      if (!sourceNode || !targetNode) {
+        console.warn(`找不到节点: source=${sourceId}, target=${targetId}`)
+      }
+
       return {
         ...link,
-        source: idToNode.get(sourceId),
-        target: idToNode.get(targetId),
+        source: sourceNode || sourceId, // 如果找不到节点对象，保留原始值
+        target: targetNode || targetId,
       }
     })
 
@@ -301,6 +310,27 @@ export class D3AutomataRenderer {
       .data(this.links)
       .join('g')
       .attr('class', 'link-label')
+      // 初始化标签位置 - 这很重要，防止标签聚集在左上角
+      .attr('transform', (d) => {
+        const source =
+          typeof d.source === 'object' ? d.source : this.nodes.find((n) => n.id === d.source)
+        const target =
+          typeof d.target === 'object' ? d.target : this.nodes.find((n) => n.id === d.target)
+
+        if (source && target && source.x !== undefined && target.x !== undefined) {
+          if (d.isSelfLoop) {
+            const loopIndex = d.loopIndex || 0
+            const angle = -Math.PI / 4 + (loopIndex * Math.PI) / 2 + Math.PI * 0.75
+            const distance = this.nodeRadius * 2.5
+            const x = source.x + distance * Math.cos(angle)
+            const y = source.y + distance * Math.sin(angle)
+            return `translate(${x}, ${y})`
+          } else {
+            return `translate(${(source.x + target.x) / 2}, ${(source.y + target.y) / 2})`
+          }
+        }
+        return 'translate(0, 0)' // 如果坐标未定义，使用默认值
+      })
 
     // 为标签添加背景矩形
     this.linkLabels.selectAll('rect').remove()
@@ -310,6 +340,10 @@ export class D3AutomataRenderer {
       .attr('ry', 5)
       .attr('stroke-width', 1)
       .attr('opacity', 0.9)
+      .attr('x', -20) // 提供初始尺寸
+      .attr('y', -10)
+      .attr('width', 40)
+      .attr('height', 20)
 
     // 添加标签文本
     this.linkLabels.selectAll('text').remove()
@@ -320,6 +354,8 @@ export class D3AutomataRenderer {
       .attr('dominant-baseline', 'middle')
       .attr('font-size', '14px')
       .attr('font-weight', 'bold')
+      .attr('x', 0) // 居中于矩形
+      .attr('y', 0)
 
     // 渲染节点
     this.nodeElements = this.container
@@ -412,7 +448,7 @@ export class D3AutomataRenderer {
 
     // 更新连线路径
     this.linkElements.attr('d', (d) => {
-      // 判断source和target是对象还是字符串
+      // 直接使用对象引用
       const source =
         typeof d.source === 'object' ? d.source : this.nodes.find((n) => n.id === d.source)
       const target =
@@ -426,11 +462,18 @@ export class D3AutomataRenderer {
       return this.calculateLinkPath(source, target, d.isSelfLoop, d.loopIndex || 0)
     })
 
-    // 更新连线标签位置
+    // 更新连线标签位置 - 修正标签位置计算
     this.linkLabels.each((d, i, nodes) => {
-      const source = this.nodes.find((n) => n.id === d.source)
-      const target = this.nodes.find((n) => n.id === d.target)
-      if (!source || !target) return
+      // 直接使用对象引用而不是查找
+      const source =
+        typeof d.source === 'object' ? d.source : this.nodes.find((n) => n.id === d.source)
+      const target =
+        typeof d.target === 'object' ? d.target : this.nodes.find((n) => n.id === d.target)
+
+      if (!source || !target || source.x === undefined || target.x === undefined) {
+        // 如果找不到节点或坐标，不更新位置
+        return
+      }
 
       const label = d3.select(nodes[i])
       const text = label.select('text')
@@ -453,15 +496,20 @@ export class D3AutomataRenderer {
         label.attr('transform', `translate(${x}, ${y})`)
       }
 
-      // 获取文本尺寸
-      const bbox = (text.node() as SVGTextElement).getBBox()
-
-      // 更新标签背景矩形尺寸
-      rect
-        .attr('x', bbox.x - 6)
-        .attr('y', bbox.y - 3)
-        .attr('width', bbox.width + 12)
-        .attr('height', bbox.height + 6)
+      // 获取文本尺寸并更新背景矩形
+      // 先确保文本已经渲染，才能获取其尺寸
+      if (text.node()) {
+        try {
+          const bbox = (text.node() as SVGTextElement).getBBox()
+          rect
+            .attr('x', bbox.x - 6)
+            .attr('y', bbox.y - 3)
+            .attr('width', bbox.width + 12)
+            .attr('height', bbox.height + 6)
+        } catch (e) {
+          console.warn('无法获取文本尺寸:', e)
+        }
+      }
     })
   }
 

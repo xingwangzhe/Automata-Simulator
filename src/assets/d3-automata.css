@@ -72,13 +72,29 @@ marker#arrow-loop path {
 }
 
 /* 连线标签样式 */
+.link-label {
+  pointer-events: none; /* 确保标签不阻止点击连线 */
+}
+
 .link-label rect {
   fill: var(--label-bg, white);
   stroke: var(--label-border, #ddd);
+  opacity: 0.9;
+  /* 增加阴影使标签在任何背景上都清晰可见 */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .link-label text {
   fill: var(--label-text, #333);
+  font-size: 13px;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.6); /* 文本阴影使文字更清晰 */
+}
+
+/* 自环标签特殊样式 */
+.self-loop + .link-label rect {
+  fill: var(--self-loop-label-bg, #fff8e1);
+  stroke: var(--self-loop-border, #f9a825);
 }
 
 /* 适配暗色模式 */
@@ -94,6 +110,8 @@ marker#arrow-loop path {
     --label-bg: #363636;
     --label-border: #4a4a4a;
     --label-text: #f5f5f5;
+    --self-loop-label-bg: #4a3b00;
+    --self-loop-border: #bb8c00;
   }
 
   .chart-container {
