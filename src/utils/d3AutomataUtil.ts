@@ -507,20 +507,20 @@ export class D3AutomataRenderer {
       .call(
         d3
           .drag()
-          .on('start', (event, d) => {
+          .on('start', (event: any, d: any) => {
             if (!event.active) this.simulation.alphaTarget(0.3).restart()
             d.fx = d.x
             d.fy = d.y
           })
-          .on('drag', (event, d) => {
+          .on('drag', (event: any, d: any) => {
             d.fx = event.x
             d.fy = event.y
           })
-          .on('end', (event, d) => {
+          .on('end', (event: any, d: any) => {
             if (!event.active) this.simulation.alphaTarget(0)
           }),
       )
-      .on('mouseenter', (event, d) => {
+      .on('mouseenter', (event: any, d: any) => {
         // 显示提示框
         this.tooltipDiv.transition().duration(200).style('opacity', 0.9)
         this.tooltipDiv
